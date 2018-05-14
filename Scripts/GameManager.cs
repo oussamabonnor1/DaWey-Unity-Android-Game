@@ -1,120 +1,105 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using Random = UnityEngine.Random;
 
 public class GameManager : MonoBehaviour
 {
-    public AudioClip[] sfx;
-    public GameObject[] Obstacle;
-    public GameObject level;
-    public GameObject[] battery;
-    public GameObject energy;
-    public GameObject gameOverPanel;
-    public GameObject cam;
+    public float Speed;
+    public float Acceleration;
+    public float RedSpeed;
+    public float BlueSpeed;
+    public List<GameObject> Roads;
+    public GameObject Bridge;
+    public GameObject[] Obstacles;
+    public Sprite[] RoadsSprites; 
     public GameObject bruddaOne;
     public GameObject bruddaTwo;
-    public GameObject PausePanel;
-    public GameObject ScoreText;
-    public GameObject Slider;
-    private Vector2 spawnPosition = new Vector2(0, 0);
-    public bool leftPlayer;
+    public GameObject energy;
     public bool transmission;
-    public float cameraSpeed;
-    public float score;
     public static bool lost;
-    public float BatteryLife;
-    private int index = 0;
+    public bool leftPlayer;
+    private float Height;
 
     // Use this for initialization
-    void Start()
+    void Start ()
     {
-        lost = false;
-        transmission = false;
-        score = 0f;
+        Height = Camera.main.ScreenToWorldPoint(new Vector2(0, Screen.height)).y;
         leftPlayer = Random.Range(1, 3) == 1;
         GameObject targetPlayer;
+        transmission = false;
         targetPlayer = leftPlayer ? bruddaOne : bruddaTwo;
         energy.transform.position = targetPlayer.transform.position;
-        BatteryLife = 100;
-        StartCoroutine(spawnBatteries());
-        StartCoroutine(spawnObstacles());
-        if(!GameObject.Find("Music Manager").GetComponents<AudioSource>()[1].isPlaying) GameObject.Find("Music Manager").GetComponent<MusicManager>().playMusic(0,true);
     }
-
-    void Update()
-    {
+	
+	// Update is called once per frame
+	void Update ()
+	{
+	    //speed = Mathf.Lerp(speed,20f,Acceleration);
+	    Speed = 20 * (1 - Mathf.Exp(-Acceleration * Time.time));
         if (!lost)
-        {
-            cameraSpeed += Time.fixedDeltaTime/ 800;
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                resume();
-            }
-            if (Input.GetMouseButtonDown(0) && !transmission)
-            {
-                leftPlayer = !leftPlayer;
-                transmission = true;
-                energy.SetActive(true);
-                GameObject.Find("Music Manager").GetComponent<MusicManager>().playSfx(1);
-                GameObject activePlayer = !leftPlayer ? bruddaOne : bruddaTwo;
-                GameObject targetPlayer = leftPlayer ? bruddaOne : bruddaTwo;
-                energy.transform.position = activePlayer.transform.position;
-                targetPlayer.GetComponent<PlayerController>().speed = cameraSpeed;
-            }
-            bruddaOne.GetComponent<PlayerController>().active = leftPlayer;
-            bruddaTwo.GetComponent<PlayerController>().active = !leftPlayer;
-            
-            if (Mathf.Min(bruddaOne.transform.position.y, bruddaTwo.transform.position.y)
-                - cam.transform.position.y > -0.9)
-                cam.transform.position = Vector3.Lerp(cam.transform.position, new Vector3(0, Mathf.Min(bruddaOne.transform.position.y, bruddaTwo.transform.position.y) + 3.2f, -10), cameraSpeed);
+	    {
+	        if (Input.GetKeyDown(KeyCode.Escape))
+	        {
+	            resume();
+	        }
+	        if (Input.GetMouseButtonDown(0) && !transmission)
+	        {
+	            leftPlayer = !leftPlayer;
+	            transmission = true;
+	            energy.SetActive(true);
+	            GameObject activePlayer = !leftPlayer ? bruddaOne : bruddaTwo;
+	            energy.transform.position = activePlayer.transform.position;
+	        }
+	        bruddaOne.GetComponent<PlayerController>().active = leftPlayer;
+	        bruddaTwo.GetComponent<PlayerController>().active = !leftPlayer;
 
-            cam.transform.Translate(new Vector3(0, cameraSpeed, 0));
+	        if (transmission)
+	        {
+	            GameObject targetPlayer = leftPlayer ? bruddaOne : bruddaTwo;
+	            energy.transform.position = Vector3.Lerp(energy.transform.position, targetPlayer.transform.position,
+	                PlayerController.energySpeed + ((5 + Speed) * Time.deltaTime));
+	        }
 
-            score += Time.deltaTime * 1.5f;
-            ScoreText.GetComponent<Text>().text = "" + (int) score + "M";
+	        for (int i = 0; i < Roads.Count; i++)
+	        {
+	            Roads[i].transform.Translate(0,-Speed * Time.deltaTime,0);
+	        }
+             for (int i = 0; i < Roads.Count; i++)
+	        {
+	           if (Roads[i].transform.position.y <= -Height * 2)
+	            {
+                    // Roads[i].transform.position = new Vector3(0,  Height * 2 -(speed * Time.deltaTime), 0);
+	                int j = (i + Roads.Count - 1) % Roads.Count;
+                    int SpawnIndex = Random.Range(0,RoadsSprites.Length);
+                    Roads[i].GetComponent<SpriteRenderer>().sprite = RoadsSprites[SpawnIndex];
+                    if(i==0) SpawnBridge(SpawnIndex);
+                    Roads[i].transform.position = new Vector3(0,Roads[j].transform.position.y + 10,0);
+                    if(i==1) SpawnObstacle();
+	            }
+	        }
 
-            BatteryLife = BatteryLife - Time.deltaTime * 2f;
-            Slider.GetComponent<Slider>().value = BatteryLife;
-            if (BatteryLife <= 20 && !Slider.GetComponent<Animation>().isPlaying)
-            {
-                Slider.GetComponent<AudioSource>().Play();
-                Slider.transform.GetChild(1).transform.GetChild(0).GetComponent<Image>().color = Color.red;
-                Slider.GetComponent<Animation>().Play();
-            }
-            if(BatteryLife >= 20 && Slider.GetComponent<Animation>().isPlaying)
-            {
-                Slider.GetComponent<AudioSource>().Stop();
-                Slider.transform.GetChild(1).transform.GetChild(0).GetComponent<Image>().color = new Color(71,252,218);
-                Slider.GetComponent<Animation>().Stop();
-            }
-            if (BatteryLife <= 0) lostGame();
-
-            //spawning level road
-            GameObject[] roads = GameObject.FindGameObjectsWithTag("road");
-            //if (index <= 3)
-                if (cam.transform.position.y > roads[roads.Length-1].transform.position.y-1)
-                {
-                    spawnPosition += new Vector2(0, level.GetComponent<SpriteRenderer>().sprite.bounds.size.y);
-                    Instantiate(level, spawnPosition,
-                        Quaternion.identity);
-                if(roads.Length > 4) Destroy(roads[0]);
-                }
-
-            if (transmission)
-            {
-                GameObject targetPlayer = leftPlayer ? bruddaOne : bruddaTwo;
-                energy.transform.position = Vector3.Lerp(energy.transform.position, targetPlayer.transform.position,
-                    PlayerController.energySpeed + (5 * Time.deltaTime));
-            }
+            RedSpeed = leftPlayer ? +Time.deltaTime: -Time.deltaTime; 
+            BlueSpeed = leftPlayer ? -Time.deltaTime: +Time.deltaTime; 
+            bruddaOne.transform.Translate(0,RedSpeed,0);
+            bruddaTwo.transform.Translate(0,BlueSpeed,0);
         }
-    }
+	}
 
-    public void Retart()
-    {
-        Time.timeScale = 1;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    void SpawnBridge(int SpawnIndex){
+        if(SpawnIndex == 0 && Random.Range(0,2) == 0) Bridge.SetActive(true);
+        else  Bridge.SetActive(false);
+    }
+    void SpawnObstacle(){
+        if(Random.Range(0,2)==0){
+                            int ObstacleIndexToActivate = Random.Range(0,2);
+                            Obstacles[ObstacleIndexToActivate].SetActive(true);
+                            Obstacles[(1 - ObstacleIndexToActivate)%2].SetActive(false);
+                            }else{
+                                    Obstacles[0].SetActive(false);
+                                    Obstacles[1].SetActive(false);
+                            }
     }
 
     void OnTriggerEnter2D(Collider2D other)
@@ -124,40 +109,6 @@ public class GameManager : MonoBehaviour
             lostGame();
         }
     }
-    
-    IEnumerator spawnBatteries()
-    {
-        yield return new WaitForSeconds(Random.Range(4, 7));
-        float height = level.GetComponent<SpriteRenderer>().bounds.extents.y;
-        int i = Random.Range(1, 3) == 1 ? 1 : -1;
-        int j = Random.Range(0, 4);
-        if (j > 0) j = 1;
-        Instantiate(battery[j], cam.transform.position + new Vector3(i * 1.5f, height, 10), battery[j].transform.rotation);
-        StartCoroutine(spawnBatteries());
-    }
-
-    IEnumerator spawnObstacles()
-    {
-        yield return new WaitForSeconds(Random.Range(8, 13));
-        float height = level.GetComponent<SpriteRenderer>().bounds.extents.y;
-        int i = Random.Range(0, Obstacle.Length);
-        int j = Random.Range(1, 3) == 1 ? 1 : -1;
-        Instantiate(Obstacle[i], cam.transform.position + new Vector3(j * 1.5f, height, 10),
-            Obstacle[i].transform.rotation);
-        StartCoroutine(spawnObstacles());
-    }
-
-    public void lostGame()
-    {
-        Handheld.Vibrate();
-        lost = true;
-        bruddaOne.transform.GetChild(0).gameObject.SetActive(false);
-        bruddaTwo.transform.GetChild(0).gameObject.SetActive(false);
-        gameOverPanel.SetActive(true);
-        if(score > PlayerPrefs.GetInt("score")) PlayerPrefs.SetInt("score", (int) score);
-        gameOverPanel.transform.GetChild(2).GetComponent<Text>().text = "Score: " + (int) score +"\nBest Score: "+PlayerPrefs.GetInt("score");
-        StopAllCoroutines();
-    }
 
     public void quit()
     {
@@ -165,12 +116,22 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene("Menu");
     }
 
+    public void lostGame()
+    {
+        /*Handheld.Vibrate();
+        lost = true;
+        bruddaOne.transform.GetChild(0).gameObject.SetActive(false);
+        bruddaTwo.transform.GetChild(0).gameObject.SetActive(false);
+        gameOverPanel.SetActive(true);
+        if (score > PlayerPrefs.GetInt("score")) PlayerPrefs.SetInt("score", (int)score);
+        gameOverPanel.transform.GetChild(2).GetComponent<Text>().text =
+            "Score: " + (int)score + "\nBest Score: " + PlayerPrefs.GetInt("score");
+        StopAllCoroutines();*/
+    }
 
     public void resume()
     {
-        Time.timeScale = (int) Time.timeScale == 1 ? 0 : 1;
+        Time.timeScale = (int)Time.timeScale == 1 ? 0 : 1;
         lost = Time.timeScale != 1;
-        PausePanel.SetActive(Time.timeScale != 1);
     }
-
 }
