@@ -47,12 +47,12 @@ public class PlayerController : MonoBehaviour
                 if (other.gameObject.name.Contains("Negative"))
                 {
                     GameObject.Find("Music Manager").GetComponent<MusicManager>().playSfx(3);
-                    gameManager.GetComponent<GameManager>().BatteryLife -= 10;
+                    //gameManager.GetComponent<GameManager>().BatteryLife -= 10;
                 }
                 else
                 {
                     GameObject.Find("Music Manager").GetComponent<MusicManager>().playSfx(2);
-                    gameManager.GetComponent<GameManager>().BatteryLife += 20;
+                    //gameManager.GetComponent<GameManager>().BatteryLife += 20;
                 }
                 Destroy(other.gameObject);
             }
@@ -64,7 +64,7 @@ public class PlayerController : MonoBehaviour
                 gameManager.GetComponent<GameManager>().lostGame();
             else
             {
-                GameObject.Find("Music Manager").GetComponent<MusicManager>().playSfx(4);
+                //GameObject.Find("Music Manager").GetComponent<MusicManager>().playSfx(4);
                 GetComponent<Animation>().Play();
             }
         }
