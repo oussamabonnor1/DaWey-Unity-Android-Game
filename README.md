@@ -1,6 +1,7 @@
 # DaWey-Unity-Android-Game
 
 ![GitHub license](https://img.shields.io/github/license/oussamabonnor1/SimpleCalculator-WPF.svg)
+![Jetlight studio](https://img.shields.io/badge/Made%20by-Jetlight%20studio-blue.svg?color=082544)
 
 DaWey is a game that we made during the global game jam of 2018, it was made in 48h.
 
@@ -32,5 +33,4 @@ DaWey is a game that we made during the global game jam of 2018, it was made in 
 Feel free to `fork` this project and add whatever you like. If you have any suggestions or any comments please feel free to contact me or to open an issue, use free license art assets please.
 
 ## Team:
-
-`Jetlighters` having fun.
+[Jetlighters](https://github.com/JetLightStudio) having fun.
